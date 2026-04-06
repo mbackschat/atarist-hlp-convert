@@ -1,0 +1,5 @@
+.DS_Store
+additional_material/
+help/
+__pycache__/
+*.pyc
