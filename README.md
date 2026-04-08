@@ -20,17 +20,16 @@ No installation needed -- [uv](https://docs.astral.sh/uv/) runs the script
 directly without setting up a virtual environment or installing Python manually:
 
 ```bash
-# Convert a single file to HTML (default)
+# Convert a single file to all formats (HTML, Markdown, plain text)
 uv run hlp_convert.py help/PC.HLP
 
-# Convert to Markdown
+# Convert to a specific format only
 uv run hlp_convert.py --format md help/LIB.HLP
-
-# Convert to plain text (LLM-friendly, no markup)
+uv run hlp_convert.py --format html help/LIB.HLP
 uv run hlp_convert.py --format txt help/LIB.HLP
 
 # Batch-convert all .HLP files in a directory
-uv run hlp_convert.py --all --format html help/ output/
+uv run hlp_convert.py --all help/ output/
 uv run hlp_convert.py --all --format txt help/ output/
 ```
 
@@ -39,8 +38,7 @@ uv run hlp_convert.py --all --format txt help/ output/
 ```bash
 python3 hlp_convert.py help/PC.HLP
 python3 hlp_convert.py --format md help/LIB.HLP
-python3 hlp_convert.py --format txt help/LIB.HLP
-python3 hlp_convert.py --all --format html help/ output/
+python3 hlp_convert.py --all help/ output/
 ```
 
 ## Output Formats
@@ -52,8 +50,9 @@ cross-reference links between help screens. Opens in any browser.
 
 ### Markdown (`--format md`)
 
-Markdown with screen content in fenced code blocks and link references listed
-below each screen. Suitable for documentation repos and static site generators.
+Markdown with screen content in fenced code blocks and cross-reference links
+listed below each screen. Suitable for documentation repos and static site
+generators.
 
 ### Plain Text (`--format txt`)
 
@@ -71,7 +70,7 @@ positional arguments:
   output                Output file (auto-generated if omitted)
 
 options:
-  --format {html,md,txt}  Output format (default: html)
+  --format {html,md,txt}  Output a single format (default: all formats)
   --all                   Convert all .HLP files in the input directory
   --no-keywords           Exclude keyword index from output
   --raw                   Don't convert Atari ST charset to UTF-8

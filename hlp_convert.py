@@ -13,7 +13,7 @@ Usage:
     python3 hlp_convert.py [options] <input.hlp> [output]
 
 Options:
-    --format html   Output as HTML with CSS styling and clickable links (default)
+    --format html   Output as HTML with CSS styling and clickable links
     --format md     Output as Markdown with link references
     --format txt    Output as plain text, optimized for LLM consumption
     --all           Convert all .HLP files in the input directory
@@ -21,8 +21,8 @@ Options:
     --no-keywords   Exclude keyword index
     --raw           Don't convert Atari ST charset to UTF-8
 
-If output is omitted, it is derived from the input filename with the appropriate
-extension (.html, .md, or .txt).
+If --format is omitted, all three formats are produced. If output is omitted,
+filenames are derived from the input with the appropriate extension.
 
 Format: Borland "Help System Version 2.0", magic 0xBD + "90BH2.0"
 Reference: https://github.com/th-otto/pc_help
@@ -734,8 +734,8 @@ def main():
     )
     parser.add_argument('input', help='Input .HLP file (or directory with --all)')
     parser.add_argument('output', nargs='?', help='Output file (auto-generated if omitted)')
-    parser.add_argument('--format', choices=['html', 'md', 'txt'], default='html',
-                        help='Output format: html (default), md (Markdown), txt (plain text for LLMs)')
+    parser.add_argument('--format', choices=['html', 'md', 'txt'], default=None,
+                        help='Output format: html, md (Markdown), txt (plain text). Default: all formats')
     parser.add_argument('--all', action='store_true',
                         help='Convert all .HLP files in the input directory')
     parser.add_argument('--keywords', action='store_true', default=True,
@@ -747,7 +747,7 @@ def main():
 
     args = parser.parse_args()
 
-    ext = FORMAT_EXT[args.format]
+    formats = [args.format] if args.format else list(FORMAT_EXT.keys())
 
     if args.all:
         # Convert all HLP files in directory
@@ -767,25 +767,27 @@ def main():
         for hlp_name in hlp_files:
             input_path = os.path.join(search_dir, hlp_name)
             base = os.path.splitext(hlp_name)[0]
-            output_path = os.path.join(out_dir, base + ext)
-            try:
-                convert_file(input_path, output_path, args.format,
-                             args.keywords, args.raw)
-            except Exception as e:
-                print(f"  ERROR: {e}", file=sys.stderr)
+            for fmt in formats:
+                output_path = os.path.join(out_dir, base + FORMAT_EXT[fmt])
+                try:
+                    convert_file(input_path, output_path, fmt,
+                                 args.keywords, args.raw)
+                except Exception as e:
+                    print(f"  ERROR: {e}", file=sys.stderr)
     else:
         if not os.path.isfile(args.input):
             print(f"File not found: {args.input}", file=sys.stderr)
             sys.exit(1)
 
-        if args.output:
-            output_path = args.output
-        else:
-            base = os.path.splitext(args.input)[0]
-            output_path = base + ext
+        for fmt in formats:
+            if args.output and len(formats) == 1:
+                output_path = args.output
+            else:
+                base = os.path.splitext(args.input)[0]
+                output_path = base + FORMAT_EXT[fmt]
 
-        convert_file(args.input, output_path, args.format,
-                     args.keywords, args.raw)
+            convert_file(args.input, output_path, fmt,
+                         args.keywords, args.raw)
 
 
 if __name__ == '__main__':
