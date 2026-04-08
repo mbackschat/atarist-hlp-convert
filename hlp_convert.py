@@ -33,6 +33,7 @@ import sys
 import os
 import argparse
 import html as html_module
+from collections import Counter
 
 # ---------------------------------------------------------------------------
 # Constants (from hcint.h)
@@ -210,6 +211,7 @@ class HLPFile:
         self._read_screen_table()
         self._read_string_table()
         self._read_keyword_tables()
+        self._build_derived_names()
 
     def _read_u32(self, offset):
         return struct.unpack('>I', self.data[offset:offset + 4])[0]
@@ -329,11 +331,26 @@ class HLPFile:
         return struct.unpack('>I', buf[offset:offset + 4])[0]
 
     def get_screen_name(self, index):
-        """Try to find a name for a screen from keywords."""
+        """Try to find a name for a screen from keywords or derived names."""
         for keyword, scr_no, attr, _ in self.keywords:
-            if scr_no == index and attr == 0:  # SCR_NAME
+            if scr_no == index and attr == 0 and keyword.strip():  # SCR_NAME
                 return keyword
-        return None
+        return self.derived_names.get(index)
+
+    def _build_derived_names(self):
+        """Derive screen names from the display text of incoming links."""
+        incoming = {}  # screen_no -> list of display texts
+        for i in range(self.screen_cnt):
+            raw = self.decode_screen(i)
+            segments = parse_links(raw, self.raw_charset)
+            for seg in segments:
+                if seg[0] == 'link':
+                    _, scr_no, attr, display = seg
+                    if 0 <= scr_no < self.screen_cnt and display.strip():
+                        incoming.setdefault(scr_no, []).append(display)
+        self.derived_names = {}
+        for scr_no, texts in incoming.items():
+            self.derived_names[scr_no] = Counter(texts).most_common(1)[0][0]
 
 
 # ---------------------------------------------------------------------------
@@ -508,9 +525,7 @@ a:hover { color: #c0392b; }
     lines.append('<h2>Help Screens</h2>')
     for i in range(hlp.screen_cnt):
         name = hlp.get_screen_name(i)
-        label = f"Screen {i}"
-        if name:
-            label += f" - {name}"
+        label = name if name else f"Screen {i}"
 
         lines.append(f'<div class="screen-header" id="{screen_anchor(i)}">{html_module.escape(label)}</div>')
         lines.append('<div class="screen">')
@@ -577,9 +592,7 @@ def generate_markdown(hlp, include_keywords=True):
     lines.append('')
     for i in range(hlp.screen_cnt):
         name = hlp.get_screen_name(i)
-        label = f"Screen {i}"
-        if name:
-            label += f" - {name}"
+        label = name if name else f"Screen {i}"
 
         lines.append(f'### <a id="{screen_anchor(i)}"></a>{label}')
         lines.append('')
@@ -642,12 +655,6 @@ def generate_text(hlp, include_keywords=True):
     lines.append(f'{hlp.screen_cnt} screens, {len(hlp.keywords)} keywords')
     lines.append('')
 
-    # Build a screen_no -> name map for resolving link targets
-    screen_names = {}
-    for keyword, scr_no, attr, _ in hlp.keywords:
-        if attr == 0 and scr_no not in screen_names:
-            screen_names[scr_no] = keyword
-
     # Keyword index
     if include_keywords and hlp.keywords:
         lines.append('=' * 70)
@@ -655,7 +662,7 @@ def generate_text(hlp, include_keywords=True):
         lines.append('=' * 70)
         lines.append('')
         for keyword, scr_no, attr, table_type in sorted(hlp.keywords, key=lambda x: x[0].lower()):
-            target = screen_names.get(scr_no, f'Screen {scr_no}')
+            target = hlp.get_screen_name(scr_no) or f'Screen {scr_no}'
             if target == keyword:
                 lines.append(f'  {keyword}')
             else:
@@ -664,7 +671,7 @@ def generate_text(hlp, include_keywords=True):
 
     # Screens
     for i in range(hlp.screen_cnt):
-        name = screen_names.get(i)
+        name = hlp.get_screen_name(i)
         label = name if name else f'Screen {i}'
 
         lines.append('=' * 70)
@@ -681,7 +688,7 @@ def generate_text(hlp, include_keywords=True):
                 parts.append(seg[1])
             elif seg[0] == 'link':
                 _, scr_no, attr, display = seg
-                target = screen_names.get(scr_no)
+                target = hlp.get_screen_name(scr_no)
                 if target and target != display:
                     parts.append(f'{display} (see: {target})')
                 else:
