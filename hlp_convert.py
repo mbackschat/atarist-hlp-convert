@@ -619,7 +619,7 @@ def generate_markdown(hlp, include_keywords=True):
         # Add link references below the code block
         has_links = any(s[0] in ('link', 'extlink') for s in segments)
         if has_links:
-            lines.append('Links: ')
+            link_parts = []
             seen = set()
             for seg in segments:
                 if seg[0] == 'link':
@@ -627,10 +627,10 @@ def generate_markdown(hlp, include_keywords=True):
                     key = (scr_no, display)
                     if key not in seen:
                         seen.add(key)
-                        target_name = hlp.get_screen_name(scr_no) or f"Screen {scr_no}"
-                        lines.append(f'  [{display}](#{screen_anchor(scr_no)}) -> {target_name}')
+                        link_parts.append(f'[{display}](#{screen_anchor(scr_no)})')
                 elif seg[0] == 'extlink':
-                    lines.append(f'  {seg[1]} *(external reference)*')
+                    link_parts.append(f'{seg[1]} *(external reference)*')
+            lines.append('Links: ' + ', '.join(link_parts))
             lines.append('')
 
     return '\n'.join(lines)
