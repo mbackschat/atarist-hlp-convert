@@ -262,7 +262,7 @@ class HLPFile:
             entry_off = offset + i * 6
             pos = self._read_i32(entry_off)
             code = self._read_u16(entry_off + 4)
-            screen_no = (code >> 3) & 0xFFF
+            screen_no = ((code >> 3) & 0xFFF) - 1
             attr = code & 0x7
 
             str_pos = entry_off + pos
@@ -406,7 +406,7 @@ def parse_links(raw, raw_charset=False):
         if code == LINK_EXTERNAL:
             segments.append(('extlink', display_text))
         else:
-            screen_no = (code >> 3) & 0xFFF
+            screen_no = ((code >> 3) & 0xFFF) - 1
             attr = code & 0x7
             segments.append(('link', screen_no, attr, display_text))
 
